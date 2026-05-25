@@ -1,0 +1,96 @@
+# Advanced Bedroom Climate Automation
+# Home Assistant automation example
+#
+# Features:
+# - Presence-based heating
+# - Smart HVAC control
+# - Night comfort logic
+# - Energy efficiency
+# - Automatic shutdown
+#
+# Replace entity_id values with your own Home Assistant entities.
+
+alias: "Bedroom - Advanced Night Climate Automation"
+
+description: >
+  Smart bedroom heating automation using presence detection,
+  temperature thresholds and night-time scheduling.
+
+mode: restart
+
+trigger:
+  - platform: time_pattern
+    minutes: "/10"
+
+condition:
+  - condition: or
+    conditions:
+      - condition: time
+        after: "22:00:00"
+
+      - condition: time
+        before: "08:00:00"
+
+action:
+  - choose:
+
+      # Heating ON when occupied and cold
+      - conditions:
+          - condition: state
+            entity_id: binary_sensor.bedroom_presence
+            state: "on"
+
+          - condition: numeric_state
+            entity_id: sensor.bedroom_temperature
+            below: 22.5
+
+        sequence:
+          - service: switch.turn_on
+            target:
+              entity_id: switch.smart_heater_power
+
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: climate.smart_heater
+            data:
+              hvac_mode: heat
+
+          - service: climate.set_temperature
+            target:
+              entity_id: climate.smart_heater
+            data:
+              temperature: 23
+
+      # Heating OFF when temperature too high
+      - conditions:
+          - condition: state
+            entity_id: binary_sensor.bedroom_presence
+            state: "on"
+
+          - condition: numeric_state
+            entity_id: sensor.bedroom_temperature
+            above: 23
+
+        sequence:
+          - service: switch.turn_off
+            target:
+              entity_id: switch.smart_heater_power
+
+          - service: climate.turn_off
+            target:
+              entity_id: climate.smart_heater
+
+      # Heating OFF when room empty
+      - conditions:
+          - condition: state
+            entity_id: binary_sensor.bedroom_presence
+            state: "off"
+
+        sequence:
+          - service: switch.turn_off
+            target:
+              entity_id: switch.smart_heater_power
+
+          - service: climate.turn_off
+            target:
+              entity_id: climate.smart_heater
