@@ -1,0 +1,79 @@
+# CO2 Voice Monitoring Automation
+# Home Assistant automation example
+#
+# Purpose:
+# - Monitor indoor CO2 level
+# - Notify via Lithuanian voice message
+# - Increase speaker volume before alert
+# - Use different messages for high and normal CO2 levels
+#
+# Replace entity_id values with your own Home Assistant entities.
+
+alias: "CO2 - Voice Monitoring Automation"
+
+description: >
+  Monitors indoor CO2 level and sends Lithuanian voice notifications
+  when CO2 rises above the configured threshold or returns to a normal level.
+
+mode: single
+
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.co2_level
+    above: 1000
+    for: "00:05:00"
+    id: co2_high
+
+  - platform: numeric_state
+    entity_id: sensor.co2_level
+    below: 800
+    for: "00:05:00"
+    id: co2_normal
+
+action:
+  - variables:
+      co2_value: "{{ states('sensor.co2_level') | int(0) }}"
+
+  - choose:
+
+      # High CO2 alert
+      - conditions:
+          - condition: trigger
+            id: co2_high
+
+        sequence:
+          - service: media_player.volume_set
+            target:
+              entity_id: media_player.voice_speaker
+            data:
+              volume_level: 0.30
+
+          - service: script.lithuanian_voice_notification
+            data:
+              voice: "jurga"
+              message: >
+                Dėmesio. Anglies dvideginio lygis dabar yra
+                {{ co2_value }} ppm.
+                Rekomenduojama pravėdinti kambarį
+                arba įjungti vėdinimą.
+
+      # CO2 returned to normal
+      - conditions:
+          - condition: trigger
+            id: co2_normal
+
+        sequence:
+          - service: media_player.volume_set
+            target:
+              entity_id: media_player.voice_speaker
+            data:
+              volume_level: 0.45
+
+          - service: script.lithuanian_voice_notification
+            data:
+              voice: "jurga"
+              message: >
+                Puiku. Anglies dvideginio lygis nukrito
+                žemiau 800 ppm ir dabar yra
+                {{ co2_value }} ppm.
+                Oro kokybė vėl normali.
